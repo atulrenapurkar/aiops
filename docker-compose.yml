@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aiops-postgres
+    # Docker Compose reads ./.env automatically; these must match DB_* used by the app.
+    environment:
+      POSTGRES_DB: ${DB_NAME:-aiops}
+      POSTGRES_USER: ${DB_USERNAME:-aiops}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-aiops123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-aiops} -d ${DB_NAME:-aiops}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

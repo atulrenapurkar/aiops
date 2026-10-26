@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AIOps Platform – Demo</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d2e;
+      --surface2: #252840;
+      --border: #2e3250;
+      --accent: #6366f1;
+      --accent2: #22d3ee;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; font-size: 14px; }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #1a1d2e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    header .logo { font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+    header .logo span { color: var(--accent2); }
+    header .badge {
+      background: var(--accent); color: white; font-size: 10px; padding: 2px 8px;
+      border-radius: 20px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    }
+    header .status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+    header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .llm-badge-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 12px; padding: 6px 14px; border-radius: 20px;
+      cursor: pointer; transition: border-color .2s; font-weight: 500;
+    }
+    .llm-badge-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .form-row label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+    .form-row select, .form-row input {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      padding: 9px 12px; border-radius: 8px; font-size: 13px; outline: none; font-family: inherit;
+    }
+    .form-row select:focus, .form-row input:focus { border-color: var(--accent); }
+    .form-hint { font-size: 11px; color: var(--muted); }
+    .form-error { font-size: 12px; color: var(--red); min-height: 16px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+    .modal.wide { width: 760px; }
+
+    .btn-sm { margin-top: 0; padding: 6px 14px; font-size: 12px; }
+    .btn-secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: rgba(239,68,68,.15); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+
+    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--accent2); margin: 20px 0 10px; }
+    .section-title:first-child { margin-top: 0; }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .chip-input-row { display: flex; gap: 8px; }
+    .chip-input-row select, .chip-input-row input { flex: 1; }
+    .chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      display: flex; align-items: center; gap: 6px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 14px; padding: 4px 6px 4px 10px; font-size: 12px;
+    }
+    .chip button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1; padding: 2px; }
+    .chip button:hover { color: var(--red); }
+
+    .project-list { display: flex; flex-direction: column; gap: 8px; }
+    .project-card {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+    }
+    .project-card .info { flex: 1; min-width: 0; }
+    .project-card .pname { font-weight: 600; font-size: 13px; }
+    .project-card .pmeta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .project-card .pactions { display: flex; gap: 6px; flex-shrink: 0; }
+    .status-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; text-transform: uppercase; }
+    .status-tag.CONFIGURED { background: rgba(148,163,184,.15); color: var(--muted); }
+    .status-tag.SYNCING { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .status-tag.SYNCED { background: rgba(34,197,94,.15); color: var(--green); }
+    .status-tag.ERROR { background: rgba(239,68,68,.15); color: var(--red); }
+
+    /* Layout */
+    .layout { display: grid; grid-template-columns: 380px 1fr; gap: 0; height: calc(100vh - 61px); overflow: hidden; }
+
+    /* Left panel – Knowledge Base */
+    .panel-left {
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .panel-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 4px; }
+
+    .source-section { }
+    .source-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: var(--radius);
+      font-weight: 600; font-size: 13px; margin-bottom: 8px;
+      cursor: pointer; user-select: none;
+    }
+    .source-header.confluence { background: #1e2d4a; color: #60a5fa; }
+    .source-header.teams      { background: #1e2540; color: #a78bfa; }
+    .source-header.outlook    { background: #1a2e2a; color: #34d399; }
+    .source-header.code       { background: #2a2416; color: #eab308; }
+    .source-header.document   { background: #2a1e2e; color: #f472b6; }
+    .source-icon { font-size: 16px; }
+    .source-count { margin-left: auto; font-size: 11px; background: rgba(255,255,255,.1); padding: 1px 6px; border-radius: 10px; }
+
+    .chunk-list { display: flex; flex-direction: column; gap: 6px; }
+    .chunk-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .chunk-card:hover { border-color: var(--accent); background: var(--surface2); }
+    .chunk-card .title { font-weight: 500; font-size: 12px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .chunk-card .excerpt { font-size: 11px; color: var(--muted); line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+    /* Right panel */
+    .panel-right { display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Error simulator */
+    .simulator {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .sim-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .sim-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+
+    .error-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .pill {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: var(--surface2); font-size: 12px; cursor: pointer;
+      transition: all .2s; white-space: nowrap;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--accent); }
+    .pill.active { border-color: var(--accent); background: rgba(99,102,241,.15); color: var(--accent); }
+
+    .error-box {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 14px; color: var(--text);
+      font-size: 12px; font-family: 'Cascadia Code', 'Consolas', monospace;
+      resize: vertical; min-height: 80px; line-height: 1.5;
+      outline: none;
+    }
+    .error-box:focus { border-color: var(--accent); }
+
+    .btn {
+      margin-top: 10px; padding: 10px 24px; background: var(--accent);
+      color: white; border: none; border-radius: var(--radius); font-size: 14px;
+      font-weight: 600; cursor: pointer; transition: opacity .2s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .btn:hover { opacity: .85; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Suggestion panel */
+    .suggestion-panel { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    .sug-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); text-align: center; gap: 12px; }
+    .sug-empty .icon { font-size: 48px; opacity: .4; }
+    .sug-empty p { max-width: 280px; line-height: 1.6; font-size: 13px; }
+
+    .sug-result { display: flex; flex-direction: column; gap: 16px; }
+    .sug-error-card {
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25);
+      border-radius: var(--radius); padding: 12px 16px;
+    }
+    .sug-error-label { font-size: 11px; font-weight: 600; color: var(--red); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .sug-error-text { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 11px; color: #fca5a5; line-height: 1.5; white-space: pre-wrap; }
+
+    .sug-ai-card {
+      background: rgba(99,102,241,.06); border: 1px solid rgba(99,102,241,.25);
+      border-radius: var(--radius); padding: 16px;
+    }
+    .sug-ai-label { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .sug-ai-text { line-height: 1.7; font-size: 13px; white-space: pre-wrap; color: var(--text); }
+
+    /* Source badges in suggestion */
+    .sources-used { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+    .src-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+    .src-badge.confluence { background: rgba(96,165,250,.15); color: #60a5fa; border: 1px solid rgba(96,165,250,.3); }
+    .src-badge.teams { background: rgba(167,139,250,.15); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
+    .src-badge.outlook { background: rgba(52,211,153,.15); color: #34d399; border: 1px solid rgba(52,211,153,.3); }
+    .src-badge.code { background: rgba(234,179,8,.15); color: #eab308; border: 1px solid rgba(234,179,8,.3); }
+    .src-badge.document { background: rgba(244,114,182,.15); color: #f472b6; border: 1px solid rgba(244,114,182,.3); }
+    .sources-label { font-size: 11px; color: var(--muted); margin-top: 14px; }
+
+    /* Project scope picker in the simulator */
+    .scope-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .scope-row label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+    .scope-row select {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      padding: 7px 12px; border-radius: 8px; font-size: 13px; outline: none; font-family: inherit; min-width: 240px;
+    }
+    .scope-row select:focus { border-color: var(--accent); }
+
+    /* Document cards with an inline delete button */
+    .doc-row { display: flex; align-items: flex-start; gap: 8px; }
+    .doc-row .chunk-card { flex: 1; min-width: 0; }
+    .doc-row .btn-danger { margin-top: 0; padding: 6px 10px; font-size: 12px; }
+    .chunk-card .parts { font-size: 10px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+
+    /* Add-knowledge panel in project details */
+    .add-knowledge { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 8px; }
+    .add-knowledge .section-title { margin-top: 0; }
+    .add-knowledge input[type=file] { padding: 7px 10px; }
+    .add-knowledge details { margin-top: 12px; }
+    .add-knowledge summary { cursor: pointer; font-size: 12px; color: var(--accent2); margin-bottom: 10px; }
+    .add-knowledge .btn { margin-top: 0; }
+
+    .meta-row { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+    /* Modal for chunk detail */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 600px; max-width: 95vw; max-height: 80vh; display: flex; flex-direction: column; }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .modal-title { font-weight: 600; flex: 1; }
+    .modal-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+    .modal-body { padding: 20px; overflow-y: auto; font-size: 13px; line-height: 1.7; white-space: pre-wrap; color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">AI<span>Ops</span> Platform</div>
+  <div class="badge">POC Demo</div>
+  <button class="llm-badge-btn" id="llmBadgeBtn" onclick="openLlmSettings()">🧠 Loading…</button>
+  <button class="llm-badge-btn" onclick="openProjects()">📁 Projects</button>
+  <div class="status">
+    <div class="dot"></div>
+    Live on localhost:8080
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ── Left: Knowledge Base ── -->
+  <div class="panel-left" id="kbPanel">
+    <div class="panel-title">📚 Knowledge Base</div>
+    <div id="kbLoading" style="color:var(--muted);font-size:12px;">Loading knowledge base…</div>
+  </div>
+
+  <!-- ── Right: Simulator + Output ── -->
+  <div class="panel-right">
+
+    <div class="simulator">
+      <div class="sim-title">🚨 Datadog Error Simulator</div>
+      <div class="sim-subtitle">Pick a project, then paste an error log or ask a question — the AI searches that project's documents, emails, Teams chats and code and answers from them.</div>
+
+      <div class="scope-row">
+        <label for="projectScope">Project</label>
+        <select id="projectScope" onchange="onScopeChange()">
+          <option value="">All projects (global knowledge)</option>
+        </select>
+        <span class="form-hint" id="scopeHint"></span>
+      </div>
+
+      <div class="error-pills" id="pillsContainer">
+        <div style="color:var(--muted);font-size:12px;">Loading errors…</div>
+      </div>
+
+      <textarea class="error-box" id="errorInput" placeholder="Paste a Datadog error log, or ask a question about the project (e.g. &quot;Which fields are mandatory for /api/payments/charge?&quot;)…" rows="4"></textarea>
+
+      <button class="btn" id="analyzeBtn" onclick="analyzeError()">
+        <span id="btnIcon">✨</span>
+        <span id="btnText">Analyze with AI</span>
+      </button>
+    </div>
+
+    <div class="suggestion-panel" id="suggestionPanel">
+      <div class="sug-empty">
+        <div class="icon">🤖</div>
+        <p>Select an error above and click <strong>Analyze with AI</strong> to see how the system searches your knowledge base and suggests a fix.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Chunk detail modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- LLM settings modal -->
+<div class="modal-overlay" id="llmModalOverlay" onclick="closeLlmModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🧠 LLM Settings</div>
+      <button class="modal-close" onclick="closeLlmModal(event)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Provider</label>
+        <select id="llmProvider" onchange="onLlmProviderChange()">
+          <option value="anthropic">Anthropic (Claude)</option>
+          <option value="openai">OpenAI-compatible (OpenAI, Azure, Groq, local...)</option>
+          <option value="ollama">Ollama (local, free)</option>
+        </select>
+      </div>
+      <div class="form-row" id="llmApiKeyRow">
+        <label>API Key</label>
+        <input type="password" id="llmApiKey" placeholder="Enter API key" autocomplete="off"/>
+        <div class="form-hint" id="llmApiKeyHint"></div>
+      </div>
+      <div class="form-row">
+        <label>Model</label>
+        <input type="text" id="llmModel" placeholder="e.g. claude-sonnet-4-6"/>
+      </div>
+      <div class="form-row">
+        <label>Base URL</label>
+        <input type="text" id="llmBaseUrl" placeholder="Endpoint URL"/>
+        <div class="form-hint">Leave as-is unless pointing at a proxy or a different provider's endpoint.</div>
+      </div>
+      <div class="form-error" id="llmError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="llmSaveBtn" onclick="saveLlmSettings()">Save &amp; Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Projects modal -->
+<div class="modal-overlay" id="projectModalOverlay" onclick="closeProjectModal(event)">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title" id="projectModalTitle">📁 Projects</div>
+      <button class="modal-close" onclick="closeProjectModal(event)">✕</button>
+    </div>
+
+    <!-- List view -->
+    <div class="modal-body" id="projectListView">
+      <div class="project-list" id="projectListContainer">
+        <div style="color:var(--muted);font-size:12px;">Loading projects…</div>
+      </div>
+    </div>
+    <div class="modal-footer" id="projectListFooter">
+      <button class="btn" onclick="showProjectForm(null)">➕ Add New Project</button>
+    </div>
+
+    <!-- Details view -->
+    <div class="modal-body" id="projectDetailsView" style="display:none;">
+      <div class="add-knowledge">
+        <div class="section-title">➕ Add Knowledge</div>
+        <div class="row-2">
+          <div class="form-row">
+            <label>Type</label>
+            <select id="akSource">
+              <option value="CONFLUENCE">📄 Confluence page</option>
+              <option value="OUTLOOK">📧 Email</option>
+              <option value="TEAMS">💬 Teams chat</option>
+              <option value="DOCUMENT">📎 Other document</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Files</label>
+            <input type="file" id="akFiles" multiple
+                   accept=".pdf,.docx,.doc,.eml,.msg,.html,.htm,.txt,.md,.rtf,.odt,.json,.csv,.log,.xml"/>
+          </div>
+        </div>
+        <div class="form-hint" style="margin-bottom:10px;">PDF, Word, emails (.eml / .msg), HTML, Markdown or text. Uploading a file with the same name again replaces the old version.</div>
+        <button class="btn btn-sm" id="akUploadBtn" onclick="uploadKnowledgeFiles()">⬆ Upload Files</button>
+        <details>
+          <summary>…or paste text (e.g. a copied Teams thread or email body)</summary>
+          <div class="form-row">
+            <label>Title</label>
+            <input type="text" id="akTitle" placeholder="e.g. Teams – #payments-incident 2024-06-07"/>
+          </div>
+          <div class="form-row">
+            <label>Text</label>
+            <textarea class="error-box" id="akText" rows="6" placeholder="Paste the conversation or email here…"></textarea>
+          </div>
+          <button class="btn btn-sm" id="akTextBtn" onclick="addKnowledgeText()">Add Text</button>
+        </details>
+        <div class="form-error" id="akStatus" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="section-title">🔗 Repositories</div>
+      <div id="detailsGit" class="chunk-list" style="margin-bottom:8px;"></div>
+
+      <div class="section-title">💻 Indexed Code Files</div>
+      <div id="detailsCode" class="chunk-list" style="margin-bottom:8px;"></div>
+
+      <div class="section-title">📄 Confluence Documents</div>
+      <div id="detailsConfluence" class="chunk-list" style="margin-bottom:8px;"></div>
+
+      <div class="section-title">💬 Teams Chat</div>
+      <div id="detailsTeams" class="chunk-list" style="margin-bottom:8px;"></div>
+
+      <div class="section-title">📧 Emails</div>
+      <div id="detailsOutlook" class="chunk-list" style="margin-bottom:8px;"></div>
+
+      <div class="section-title">📎 Other Documents</div>
+      <div id="detailsDocuments" class="chunk-list"></div>
+    </div>
+    <div class="modal-footer" id="projectDetailsFooter" style="display:none;">
+      <button class="btn btn-secondary" onclick="showProjectList()">← Back</button>
+      <button class="btn" onclick="syncProjectNow(currentDetailsProjectId)">🔄 Sync Now</button>
+    </div>
+
+    <!-- Form view (create / edit) -->
+    <div class="modal-body" id="projectFormView" style="display:none;">
+      <div class="form-row">
+        <label>Project Name</label>
+        <input type="text" id="pfName" placeholder="e.g. payment-service"/>
+      </div>
+
+      <div class="section-title">🔗 Dependencies</div>
+      <div class="row-2">
+        <div class="form-row">
+          <label>Upstream Projects (calls into)</label>
+          <div class="chip-input-row">
+            <select id="pfUpstreamSelect"></select>
+            <button class="btn btn-sm btn-secondary" id="pfUpstreamAddBtn" onclick="addProjectRef('upstreamProjects','pfUpstreamSelect')">Add</button>
+          </div>
+          <div class="chip-list" id="chips-upstreamProjects"></div>
+        </div>
+        <div class="form-row">
+          <label>Downstream Applications (depend on this)</label>
+          <div class="chip-input-row">
+            <select id="pfDownstreamSelect"></select>
+            <button class="btn btn-sm btn-secondary" id="pfDownstreamAddBtn" onclick="addProjectRef('downstreamProjects','pfDownstreamSelect')">Add</button>
+          </div>
+          <div class="chip-list" id="chips-downstreamProjects"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Git Repository URLs</label>
+        <div class="chip-input-row">
+          <input type="text" id="pfGitInput" placeholder="https://github.com/org/repo.git"/>
+          <button class="btn btn-sm btn-secondary" onclick="addChipValue('gitRepositoryUrls','pfGitInput')">Add</button>
+        </div>
+        <div class="chip-list" id="chips-gitRepositoryUrls"></div>
+      </div>
+
+      <div class="section-title">📄 Confluence</div>
+      <div class="row-2">
+        <div class="form-row">
+          <label>Base URL</label>
+          <input type="text" id="pfConfluenceBaseUrl" placeholder="https://yourteam.atlassian.net/wiki"/>
+        </div>
+        <div class="form-row">
+          <label>Username / Email</label>
+          <input type="text" id="pfConfluenceUsername" placeholder="you@company.com"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>API Key</label>
+        <input type="password" id="pfConfluenceApiKey" placeholder="Enter API key" autocomplete="off"/>
+        <div class="form-hint" id="pfConfluenceApiKeyHint"></div>
+      </div>
+      <div class="form-row">
+        <label>Specific Page URLs</label>
+        <div class="chip-input-row">
+          <input type="text" id="pfConfluenceUrlInput" placeholder="https://.../wiki/spaces/X/pages/12345/Title"/>
+          <button class="btn btn-sm btn-secondary" onclick="addChipValue('confluenceUrls','pfConfluenceUrlInput')">Add</button>
+        </div>
+        <div class="chip-list" id="chips-confluenceUrls"></div>
+      </div>
+      <div class="form-row">
+        <label>Or Upload a Downloaded Confluence Page</label>
+        <div class="chip-input-row">
+          <input type="file" id="pfConfluenceFile" accept=".pdf,.docx,.doc,.html,.htm,.txt,.md"/>
+          <button class="btn btn-sm btn-secondary" onclick="uploadConfluenceFile()">Upload</button>
+        </div>
+        <div class="form-hint" id="pfUploadHint">Accepts a PDF, Word, HTML, Markdown, or plain-text export of a Confluence page. Only available after the project is created.</div>
+      </div>
+
+      <div class="section-title">💬 Microsoft Teams</div>
+      <div class="form-row">
+        <label>API Key (Graph bearer token)</label>
+        <input type="password" id="pfTeamsApiKey" placeholder="Enter API key" autocomplete="off"/>
+        <div class="form-hint" id="pfTeamsApiKeyHint"></div>
+      </div>
+      <div class="form-row">
+        <label>Channel URLs</label>
+        <div class="chip-input-row">
+          <input type="text" id="pfTeamsUrlInput" placeholder="https://teams.microsoft.com/l/channel/..."/>
+          <button class="btn btn-sm btn-secondary" onclick="addChipValue('teamsChannelUrls','pfTeamsUrlInput')">Add</button>
+        </div>
+        <div class="chip-list" id="chips-teamsChannelUrls"></div>
+      </div>
+
+      <div class="section-title">📧 Email</div>
+      <div class="form-row">
+        <label>Mailbox to pull project communications from</label>
+        <input type="text" id="pfEmailAddress" placeholder="project-team@company.com"/>
+      </div>
+
+      <div class="form-error" id="pfError"></div>
+    </div>
+    <div class="modal-footer" id="projectFormFooter" style="display:none;">
+      <button class="btn btn-secondary" onclick="showProjectList()">← Back</button>
+      <button class="btn" id="pfSaveBtn" onclick="saveProject()">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let sampleErrors = [];
+
+  // ── Knowledge sources ────────────────────────────────────────
+  const KB_SECTIONS = [
+    { key: 'confluence', source: 'CONFLUENCE', label: 'Confluence',      icon: '📄', cls: 'confluence' },
+    { key: 'teams',      source: 'TEAMS',      label: 'MS Teams',        icon: '💬', cls: 'teams' },
+    { key: 'outlook',    source: 'OUTLOOK',    label: 'Email',           icon: '📧', cls: 'outlook' },
+    { key: 'documents',  source: 'DOCUMENT',   label: 'Other Documents', icon: '📎', cls: 'document' },
+    { key: 'code',       source: 'CODE',       label: 'Source Code',     icon: '💻', cls: 'code' },
+  ];
+  const SECTION_BY_SOURCE = Object.fromEntries(KB_SECTIONS.map(s => [s.source, s]));
+
+  // Documents are stored as several chunks with source_id "{documentKey}#{n}" — regroup them for display.
+  function chunkPart(c) {
+    const i = (c.sourceId || '').lastIndexOf('#');
+    return i < 0 ? 0 : (parseInt(c.sourceId.slice(i + 1), 10) || 0);
+  }
+
+  function groupDocs(chunks) {
+    const byKey = new Map();
+    (chunks || []).forEach(c => {
+      const key = (c.sourceId || ('id-' + c.id)).split('#')[0];
+      if (!byKey.has(key)) byKey.set(key, { key, source: c.source, title: c.title || key, parts: [] });
+      byKey.get(key).parts.push(c);
+    });
+    return [...byKey.values()].map(d => {
+      d.parts.sort((a, b) => chunkPart(a) - chunkPart(b));
+      d.content = d.parts.map(p => p.content).join('\n\n');
+      return d;
+    });
+  }
+
+  // Docs currently rendered, looked up by index from onclick handlers (avoids inlining content into HTML)
+  const shownDocs = { kb: [], details: [] };
+
+  function openDoc(list, i) {
+    const d = shownDocs[list][i];
+    if (d) showChunk(d.title, d.content);
+  }
+
+  function docCardHtml(list, d, excerptLen) {
+    const i = shownDocs[list].push(d) - 1;
+    const parts = d.parts.length > 1 ? `<span class="parts">${d.parts.length} parts</span>` : '';
+    return `
+      <div class="chunk-card" onclick="openDoc('${list}', ${i})">
+        <div class="title">${escHtml(d.title)}${parts}</div>
+        <div class="excerpt">${escHtml(d.content.substring(0, excerptLen))}…</div>
+      </div>`;
+  }
+
+  // ── Load knowledge base (follows the selected project) ──────
+  async function loadKB() {
+    const pid = currentScopeId();
+    try {
+      const res = await fetch(pid ? `/api/applications/${pid}/knowledge` : '/api/demo/knowledge-base');
+      if (!res.ok) throw new Error(res.statusText);
+      renderKB(await res.json(), pid);
+    } catch (e) {
+      document.getElementById('kbPanel').innerHTML =
+        '<div class="panel-title">📚 Knowledge Base</div><div style="color:var(--muted);font-size:12px;">Failed to load knowledge base. Is the server running?</div>';
+    }
+  }
+
+  function renderKB(data, pid) {
+    const panel = document.getElementById('kbPanel');
+    const project = pid ? projects.find(p => p.id === pid) : null;
+    panel.innerHTML = `<div class="panel-title">📚 Knowledge Base${project ? ' — ' + escHtml(project.name) : ''}</div>`;
+    shownDocs.kb = [];
+
+    let total = 0;
+    KB_SECTIONS.forEach(({ key, label, icon, cls }) => {
+      const docs = groupDocs(data[key]);
+      total += docs.length;
+      if (!docs.length && key === 'documents') return; // keep the global demo view uncluttered
+      const sec = document.createElement('div');
+      sec.className = 'source-section';
+      sec.innerHTML = `
+        <div class="source-header ${cls}">
+          <span class="source-icon">${icon}</span>
+          ${label}
+          <span class="source-count">${docs.length}</span>
+        </div>
+        <div class="chunk-list">${docs.map(d => docCardHtml('kb', d, 120)).join('')}</div>
+      `;
+      panel.appendChild(sec);
+    });
+
+    if (project && total === 0) {
+      panel.insertAdjacentHTML('beforeend', `
+        <div style="color:var(--muted);font-size:12px;line-height:1.6;">
+          Nothing added to this project yet.<br/>
+          <a href="#" style="color:var(--accent2);" onclick="openProjects(); showProjectDetails(${project.id}); return false;">Add documents, emails or Teams chats →</a>
+        </div>`);
+    }
+  }
+
+  // ── Project scope for questions ─────────────────────────────
+  function currentScopeId() {
+    const v = document.getElementById('projectScope').value;
+    return v ? Number(v) : null;
+  }
+
+  function populateScope() {
+    const sel = document.getElementById('projectScope');
+    let wanted = sel.value;
+    if (!wanted) { try { wanted = localStorage.getItem('aiops.scope') || ''; } catch (e) {} }
+    sel.innerHTML = '<option value="">All projects (global knowledge)</option>' +
+      projects.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
+    sel.value = projects.some(p => String(p.id) === String(wanted)) ? String(wanted) : '';
+    renderScopeHint();
+  }
+
+  function renderScopeHint() {
+    const pid = currentScopeId();
+    const p = pid ? projects.find(x => x.id === pid) : null;
+    const deps = p ? [...p.upstreamProjects, ...p.downstreamProjects] : [];
+    document.getElementById('scopeHint').textContent = !p ? 'Searches every project and the demo data'
+      : deps.length ? `Also searches dependencies: ${[...new Set(deps)].join(', ')}` : '';
+  }
+
+  function onScopeChange() {
+    try { localStorage.setItem('aiops.scope', document.getElementById('projectScope').value); } catch (e) {}
+    renderScopeHint();
+    loadKB();
+  }
+
+  function askAboutProject(id) {
+    document.getElementById('projectScope').value = String(id);
+    onScopeChange();
+    document.getElementById('projectModalOverlay').classList.remove('open');
+    document.getElementById('errorInput').focus();
+  }
+
+  // ── Load sample errors ───────────────────────────────────────
+  async function loadErrors() {
+    try {
+      const res = await fetch('/api/demo/sample-errors');
+      sampleErrors = await res.json();
+      renderPills();
+    } catch (e) {
+      document.getElementById('pillsContainer').textContent = 'Failed to load sample errors.';
+    }
+  }
+
+  function renderPills() {
+    const container = document.getElementById('pillsContainer');
+    container.innerHTML = sampleErrors.map((e, i) => `
+      <div class="pill" id="pill-${i}" onclick="selectError(${i})">${e.label}</div>
+    `).join('');
+  }
+
+  function selectError(i) {
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    document.getElementById('pill-' + i).classList.add('active');
+    document.getElementById('errorInput').value = sampleErrors[i].error;
+  }
+
+  // ── Analyze ─────────────────────────────────────────────────
+  async function analyzeError() {
+    const errorMsg = document.getElementById('errorInput').value.trim();
+    if (!errorMsg) { document.getElementById('errorInput').focus(); return; }
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    document.getElementById('btnIcon').outerHTML = '<div class="spinner" id="btnIcon"></div>';
+    document.getElementById('btnText').textContent = 'Analyzing…';
+
+    document.getElementById('suggestionPanel').innerHTML = `
+      <div class="sug-empty">
+        <div class="icon">🔍</div>
+        <p>Searching knowledge base and generating an answer…<br/><span style="color:var(--muted);font-size:11px;">This usually takes 5–30 seconds.</span></p>
+      </div>
+    `;
+
+    try {
+      const res = await fetch('/api/demo/simulate-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ errorMessage: errorMsg, applicationId: currentScopeId() })
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = text;
+        try { msg = JSON.parse(text).error || text; } catch (_) {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      renderSuggestion(data);
+    } catch (e) {
+      document.getElementById('suggestionPanel').innerHTML = `
+        <div class="sug-empty">
+          <div class="icon">⚠️</div>
+          <p style="color:var(--red)">Error: ${escHtml(e.message)}<br/><br/>
+          Make sure Ollama is running with <code>nomic-embed-text</code> pulled (used for search), and your Anthropic API key is set in config/application.properties.</p>
+        </div>
+      `;
+    } finally {
+      btn.disabled = false;
+      document.getElementById('btnIcon').outerHTML = '<span id="btnIcon">✨</span>';
+      document.getElementById('btnText').textContent = 'Analyze with AI';
+    }
+  }
+
+  function renderSuggestion(data) {
+    const pid = currentScopeId();
+    const scopeName = pid ? (projects.find(p => p.id === pid) || {}).name : null;
+
+    // Real retrieved sources, in relevance order, as returned by the backend
+    const badgesHtml = (data.sources || []).map(s => {
+      const sec = SECTION_BY_SOURCE[s.source] || { cls: 'document', icon: '📎', label: s.source };
+      const fromDep = s.project && scopeName && s.project !== scopeName ? ` · ${s.project}` : '';
+      return `<span class="src-badge ${sec.cls}" title="${escHtml(sec.label)}">${sec.icon} ${escHtml(s.title)}${escHtml(fromDep)}</span>`;
+    }).join('');
+
+    document.getElementById('suggestionPanel').innerHTML = `
+      <div class="sug-result">
+        <div class="sug-error-card">
+          <div class="sug-error-label">🔴 Error log / question</div>
+          <div class="sug-error-text">${escHtml(data.errorMessage)}</div>
+        </div>
+
+        <div class="sug-ai-card">
+          <div class="sug-ai-label">🤖 AI answer (via ${currentLlmLabel()})</div>
+          <div class="sug-ai-text">${escHtml(data.suggestion)}</div>
+          ${badgesHtml ? `<div class="sources-label">📚 Searched these sources to answer:</div><div class="sources-used">${badgesHtml}</div>` : ''}
+        </div>
+
+        <div class="meta-row">
+          <span>⏱ ${data.processingMs}ms</span>
+          <span>📦 Scope: ${scopeName ? escHtml(scopeName) : 'All projects'}</span>
+          <span>🧠 Model: ${currentLlmLabel()}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── LLM settings ────────────────────────────────────────────
+  let llmSettingsCache = null;
+  const LLM_LABELS = { anthropic: 'Claude', openai: 'OpenAI', ollama: 'Ollama' };
+
+  async function loadLlmSettings() {
+    try {
+      const res = await fetch('/api/llm/settings');
+      llmSettingsCache = await res.json();
+      renderLlmBadge();
+    } catch (e) {
+      document.getElementById('llmBadgeBtn').textContent = '🧠 LLM: unknown ⚙';
+    }
+  }
+
+  function renderLlmBadge() {
+    if (!llmSettingsCache) return;
+    const p = llmSettingsCache.provider;
+    const model = (llmSettingsCache[p] || {}).model || '';
+    document.getElementById('llmBadgeBtn').textContent = `🧠 ${LLM_LABELS[p] || p} (${model}) ⚙`;
+  }
+
+  function currentLlmLabel() {
+    if (!llmSettingsCache) return 'AI';
+    const p = llmSettingsCache.provider;
+    const model = (llmSettingsCache[p] || {}).model || '';
+    return `${LLM_LABELS[p] || p} (${model})`;
+  }
+
+  function openLlmSettings() {
+    if (llmSettingsCache) {
+      document.getElementById('llmProvider').value = llmSettingsCache.provider;
+      populateLlmProviderFields();
+    }
+    document.getElementById('llmError').textContent = '';
+    document.getElementById('llmModalOverlay').classList.add('open');
+  }
+
+  function closeLlmModal(e) {
+    if (!e || e.target === document.getElementById('llmModalOverlay') || e.currentTarget.classList.contains('modal-close')) {
+      document.getElementById('llmModalOverlay').classList.remove('open');
+    }
+  }
+
+  function onLlmProviderChange() {
+    populateLlmProviderFields();
+  }
+
+  function populateLlmProviderFields() {
+    const p = document.getElementById('llmProvider').value;
+    const cfg = (llmSettingsCache && llmSettingsCache[p]) || {};
+
+    document.getElementById('llmApiKeyRow').style.display = (p === 'ollama') ? 'none' : 'flex';
+    document.getElementById('llmApiKey').value = '';
+    document.getElementById('llmApiKeyHint').textContent = cfg.apiKeyMasked ? `Current key: ${cfg.apiKeyMasked} — leave blank to keep it` : 'No key saved yet for this provider';
+
+    document.getElementById('llmModel').value = cfg.model || '';
+    document.getElementById('llmBaseUrl').value = cfg.baseUrl || '';
+  }
+
+  async function saveLlmSettings() {
+    const provider = document.getElementById('llmProvider').value;
+    const apiKey = document.getElementById('llmApiKey').value.trim();
+    const model = document.getElementById('llmModel').value.trim();
+    const baseUrl = document.getElementById('llmBaseUrl').value.trim();
+
+    const btn = document.getElementById('llmSaveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    document.getElementById('llmError').textContent = '';
+
+    try {
+      const res = await fetch('/api/llm/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, model, baseUrl })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save settings');
+      llmSettingsCache = data;
+      renderLlmBadge();
+      closeLlmModal();
+    } catch (e) {
+      document.getElementById('llmError').textContent = e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save & Apply';
+    }
+  }
+
+  // ── Projects ────────────────────────────────────────────────
+  let projects = [];
+  let editingProjectId = null;
+  let formLists = {
+    upstreamProjects: [], downstreamProjects: [], gitRepositoryUrls: [],
+    confluenceUrls: [], teamsChannelUrls: []
+  };
+
+  function openProjects() {
+    document.getElementById('projectModalOverlay').classList.add('open');
+    showProjectList();
+    loadProjects();
+  }
+
+  function closeProjectModal(e) {
+    if (!e || e.target === document.getElementById('projectModalOverlay') || e.currentTarget.classList.contains('modal-close')) {
+      document.getElementById('projectModalOverlay').classList.remove('open');
+    }
+  }
+
+  async function loadProjects() {
+    try {
+      const res = await fetch('/api/applications');
+      projects = await res.json();
+      renderProjectList();
+      populateScope();
+    } catch (e) {
+      document.getElementById('projectListContainer').textContent = 'Failed to load projects.';
+    }
+  }
+
+  function renderProjectList() {
+    const container = document.getElementById('projectListContainer');
+    if (!projects.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:12px;">No projects yet — add one to get started.</div>';
+      return;
+    }
+    container.innerHTML = projects.map(p => `
+      <div class="project-card">
+        <div class="info">
+          <div class="pname">${escHtml(p.name)} <span class="status-tag ${p.status}">${p.status}</span></div>
+          <div class="pmeta">
+            ⬆ ${p.upstreamProjects.length} upstream · ⬇ ${p.downstreamProjects.length} downstream ·
+            🗂 ${p.gitRepositoryUrls.length} repo(s) ·
+            ${p.lastSyncedAt ? 'Last synced ' + new Date(p.lastSyncedAt).toLocaleString() : 'Never synced'}
+          </div>
+        </div>
+        <div class="pactions">
+          <button class="btn btn-sm" onclick="askAboutProject(${p.id})">💬 Ask</button>
+          <button class="btn btn-sm btn-secondary" onclick="showProjectDetails(${p.id})">👁 Details</button>
+          <button class="btn btn-sm btn-secondary" onclick="syncProjectNow(${p.id})">🔄 Sync</button>
+          <button class="btn btn-sm btn-secondary" onclick="showProjectForm(${p.id})">✏ Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteProject(${p.id})">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function showProjectList() {
+    document.getElementById('projectListView').style.display = 'block';
+    document.getElementById('projectListFooter').style.display = 'flex';
+    document.getElementById('projectFormView').style.display = 'none';
+    document.getElementById('projectFormFooter').style.display = 'none';
+    document.getElementById('projectDetailsView').style.display = 'none';
+    document.getElementById('projectDetailsFooter').style.display = 'none';
+    document.getElementById('projectModalTitle').textContent = '📁 Projects';
+  }
+
+  let currentDetailsProjectId = null;
+
+  async function showProjectDetails(projectId) {
+    currentDetailsProjectId = projectId;
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    document.getElementById('projectListView').style.display = 'none';
+    document.getElementById('projectListFooter').style.display = 'none';
+    document.getElementById('projectFormView').style.display = 'none';
+    document.getElementById('projectFormFooter').style.display = 'none';
+    document.getElementById('projectDetailsView').style.display = 'block';
+    document.getElementById('projectDetailsFooter').style.display = 'flex';
+    document.getElementById('projectModalTitle').textContent = `👁 ${project.name}`;
+    document.getElementById('akStatus').textContent = '';
+
+    document.getElementById('detailsGit').innerHTML = project.gitRepositoryUrls.length
+      ? project.gitRepositoryUrls.map(url => `
+          <a class="chunk-card" style="display:block;text-decoration:none;color:inherit;" href="${escHtml(url)}" target="_blank" rel="noopener">
+            <div class="title">🔗 ${escHtml(url)}</div>
+          </a>
+        `).join('')
+      : '<div style="color:var(--muted);font-size:12px;">No repositories linked.</div>';
+
+    await loadProjectKnowledge(projectId);
+  }
+
+  const DETAIL_LISTS = ['detailsCode','detailsConfluence','detailsTeams','detailsOutlook','detailsDocuments'];
+
+  async function loadProjectKnowledge(projectId) {
+    DETAIL_LISTS.forEach(id => {
+      document.getElementById(id).innerHTML = '<div style="color:var(--muted);font-size:12px;">Loading…</div>';
+    });
+    shownDocs.details = [];
+
+    try {
+      const res = await fetch(`/api/applications/${projectId}/knowledge`);
+      const data = await res.json();
+      renderDetailsList('detailsCode', data.code, 'No code indexed yet — add a repository URL in Edit, then Sync (requires git on PATH; public repos only).', false);
+      renderDetailsList('detailsConfluence', data.confluence, 'No Confluence pages yet — upload a PDF / Word / HTML export above, or add page URLs in Edit and Sync.', true);
+      renderDetailsList('detailsTeams', data.teams, 'No Teams chats yet — upload an export or paste a thread above.', true);
+      renderDetailsList('detailsOutlook', data.outlook, 'No emails yet — upload .eml / .msg files or paste an email above.', true);
+      renderDetailsList('detailsDocuments', data.documents, 'No other documents yet — upload design docs, runbooks or specs above.', true);
+    } catch (e) {
+      DETAIL_LISTS.forEach(id => {
+        document.getElementById(id).innerHTML = '<div style="color:var(--red);font-size:12px;">Failed to load.</div>';
+      });
+    }
+  }
+
+  function renderDetailsList(containerId, chunks, emptyMessage, deletable) {
+    const el = document.getElementById(containerId);
+    const docs = groupDocs(chunks);
+    if (!docs.length) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:12px;">${emptyMessage}</div>`;
+      return;
+    }
+    el.innerHTML = docs.map(d => {
+      const card = docCardHtml('details', d, 160);
+      if (!deletable) return card;
+      const i = shownDocs.details.length - 1;
+      return `<div class="doc-row">${card}<button class="btn btn-danger" title="Remove from project" onclick="deleteKnowledgeDoc(${i})">🗑</button></div>`;
+    }).join('');
+  }
+
+  // ── Add / remove project knowledge ──────────────────────────
+  function setAkStatus(msg, ok) {
+    const el = document.getElementById('akStatus');
+    el.style.color = ok ? 'var(--green)' : 'var(--red)';
+    el.textContent = msg;
+  }
+
+  async function uploadKnowledgeFiles() {
+    const input = document.getElementById('akFiles');
+    if (!input.files.length) { setAkStatus('Choose one or more files first.', false); return; }
+
+    const form = new FormData();
+    form.append('source', document.getElementById('akSource').value);
+    [...input.files].forEach(f => form.append('files', f));
+
+    const btn = document.getElementById('akUploadBtn');
+    btn.disabled = true;
+    btn.textContent = `Processing ${input.files.length} file(s)…`;
+    setAkStatus('Extracting text and indexing — large PDFs can take a minute.', true);
+    document.getElementById('akStatus').style.color = 'var(--muted)';
+
+    try {
+      const res = await fetch(`/api/applications/${currentDetailsProjectId}/documents`, { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      const ok = data.results.filter(r => !r.error);
+      const failed = data.results.filter(r => r.error);
+      let msg = ok.length ? `Added ${ok.length} file(s): ${ok.map(r => `${r.fileName} (${r.chunks} part${r.chunks === 1 ? '' : 's'})`).join(', ')}.` : '';
+      if (failed.length) msg += ` Failed: ${failed.map(r => `${r.fileName} — ${r.error}`).join('; ')}`;
+      setAkStatus(msg.trim(), failed.length === 0);
+      input.value = '';
+      await loadProjectKnowledge(currentDetailsProjectId);
+      loadKB();
+    } catch (e) {
+      setAkStatus(e.message, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⬆ Upload Files';
+    }
+  }
+
+  async function addKnowledgeText() {
+    const title = document.getElementById('akTitle').value.trim();
+    const text = document.getElementById('akText').value.trim();
+    if (!title || !text) { setAkStatus('Enter both a title and the text to add.', false); return; }
+
+    const btn = document.getElementById('akTextBtn');
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/applications/${currentDetailsProjectId}/documents/text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: document.getElementById('akSource').value, title, text })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to add text');
+      setAkStatus(`Added "${data.fileName}" (${data.chunks} part${data.chunks === 1 ? '' : 's'}).`, true);
+      document.getElementById('akTitle').value = '';
+      document.getElementById('akText').value = '';
+      await loadProjectKnowledge(currentDetailsProjectId);
+      loadKB();
+    } catch (e) {
+      setAkStatus(e.message, false);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function deleteKnowledgeDoc(i) {
+    const d = shownDocs.details[i];
+    if (!d) return;
+    const params = new URLSearchParams({ source: d.source, documentKey: d.key });
+    try {
+      const res = await fetch(`/api/applications/${currentDetailsProjectId}/documents?${params}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      setAkStatus(`Removed "${d.title}".`, true);
+      await loadProjectKnowledge(currentDetailsProjectId);
+      loadKB();
+    } catch (e) {
+      setAkStatus(e.message, false);
+    }
+  }
+
+  function showProjectForm(projectId) {
+    editingProjectId = projectId;
+    const project = projectId ? projects.find(p => p.id === projectId) : null;
+
+    document.getElementById('projectListView').style.display = 'none';
+    document.getElementById('projectListFooter').style.display = 'none';
+    document.getElementById('projectFormView').style.display = 'block';
+    document.getElementById('projectFormFooter').style.display = 'flex';
+    document.getElementById('projectModalTitle').textContent = project ? `✏ Edit: ${project.name}` : '➕ New Project';
+    document.getElementById('pfError').textContent = '';
+
+    formLists = {
+      upstreamProjects: project ? [...project.upstreamProjects] : [],
+      downstreamProjects: project ? [...project.downstreamProjects] : [],
+      gitRepositoryUrls: project ? [...project.gitRepositoryUrls] : [],
+      confluenceUrls: project ? [...project.confluenceUrls] : [],
+      teamsChannelUrls: project ? [...project.teamsChannelUrls] : []
+    };
+
+    document.getElementById('pfName').value = project ? project.name : '';
+    document.getElementById('pfConfluenceBaseUrl').value = project ? (project.confluenceBaseUrl || '') : '';
+    document.getElementById('pfConfluenceUsername').value = project ? (project.confluenceUsername || '') : '';
+    document.getElementById('pfConfluenceApiKey').value = '';
+    document.getElementById('pfConfluenceApiKeyHint').textContent = project && project.confluenceApiKey ? 'A key is already saved — leave blank to keep it' : '';
+    document.getElementById('pfTeamsApiKey').value = '';
+    document.getElementById('pfTeamsApiKeyHint').textContent = project && project.teamsApiKey ? 'A key is already saved — leave blank to keep it' : '';
+    document.getElementById('pfEmailAddress').value = project ? (project.emailAddress || '') : '';
+    document.getElementById('pfUploadHint').textContent = project
+      ? 'Accepts an HTML, Markdown, or plain-text export of a Confluence page.'
+      : 'Accepts an HTML, Markdown, or plain-text export of a Confluence page. Save the project first, then come back to upload.';
+
+    populateProjectRefSelect('pfUpstreamSelect', projectId);
+    populateProjectRefSelect('pfDownstreamSelect', projectId);
+    ['upstreamProjects','downstreamProjects','gitRepositoryUrls','confluenceUrls','teamsChannelUrls'].forEach(renderChips);
+  }
+
+  function populateProjectRefSelect(selectId, excludeId) {
+    const sel = document.getElementById(selectId);
+    const addBtnId = selectId === 'pfUpstreamSelect' ? 'pfUpstreamAddBtn' : 'pfDownstreamAddBtn';
+    const addBtn = document.getElementById(addBtnId);
+    const others = projects.filter(p => p.id !== excludeId);
+
+    if (others.length) {
+      sel.innerHTML = others.map(p => `<option value="${escHtml(p.name)}">${escHtml(p.name)}</option>`).join('');
+      sel.disabled = false;
+      addBtn.disabled = false;
+      addBtn.title = '';
+    } else {
+      sel.innerHTML = '<option value="">No other projects yet</option>';
+      sel.disabled = true;
+      addBtn.disabled = true;
+      addBtn.title = 'Create another project first, then come back to link it here';
+    }
+  }
+
+  function addProjectRef(fieldKey, selectId) {
+    const val = document.getElementById(selectId).value;
+    if (!val || formLists[fieldKey].includes(val)) return;
+    formLists[fieldKey].push(val);
+    renderChips(fieldKey);
+  }
+
+  function addChipValue(fieldKey, inputId) {
+    const input = document.getElementById(inputId);
+    const val = input.value.trim();
+    if (!val || formLists[fieldKey].includes(val)) return;
+    formLists[fieldKey].push(val);
+    input.value = '';
+    renderChips(fieldKey);
+  }
+
+  function removeChip(fieldKey, index) {
+    formLists[fieldKey].splice(index, 1);
+    renderChips(fieldKey);
+  }
+
+  function renderChips(fieldKey) {
+    const el = document.getElementById('chips-' + fieldKey);
+    el.innerHTML = formLists[fieldKey].map((val, i) => `
+      <div class="chip">${escHtml(val)}<button onclick="removeChip('${fieldKey}',${i})">✕</button></div>
+    `).join('');
+  }
+
+  async function saveProject() {
+    const name = document.getElementById('pfName').value.trim();
+    if (!name) { document.getElementById('pfError').textContent = 'Project name is required.'; return; }
+
+    const payload = {
+      name,
+      upstreamProjects: formLists.upstreamProjects,
+      downstreamProjects: formLists.downstreamProjects,
+      gitRepositoryUrls: formLists.gitRepositoryUrls,
+      confluenceUrls: formLists.confluenceUrls,
+      confluenceBaseUrl: document.getElementById('pfConfluenceBaseUrl').value.trim(),
+      confluenceUsername: document.getElementById('pfConfluenceUsername').value.trim(),
+      confluenceApiKey: document.getElementById('pfConfluenceApiKey').value.trim(),
+      teamsChannelUrls: formLists.teamsChannelUrls,
+      teamsApiKey: document.getElementById('pfTeamsApiKey').value.trim(),
+      emailAddress: document.getElementById('pfEmailAddress').value.trim()
+    };
+
+    const btn = document.getElementById('pfSaveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    document.getElementById('pfError').textContent = '';
+
+    try {
+      const res = await fetch(editingProjectId ? `/api/applications/${editingProjectId}` : '/api/applications', {
+        method: editingProjectId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text() || 'Failed to save project');
+      const saved = await res.json();
+      editingProjectId = saved.id;
+      await loadProjects();
+      showProjectForm(saved.id); // re-open in edit mode so upload becomes available
+    } catch (e) {
+      document.getElementById('pfError').textContent = e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Project';
+    }
+  }
+
+  async function uploadConfluenceFile() {
+    if (!editingProjectId) {
+      document.getElementById('pfError').textContent = 'Save the project before uploading a page.';
+      return;
+    }
+    const fileInput = document.getElementById('pfConfluenceFile');
+    if (!fileInput.files.length) {
+      document.getElementById('pfError').textContent = 'Choose a file to upload first.';
+      return;
+    }
+    const form = new FormData();
+    form.append('file', fileInput.files[0]);
+
+    try {
+      const res = await fetch(`/api/applications/${editingProjectId}/confluence/upload`, { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      document.getElementById('pfError').style.color = 'var(--green)';
+      document.getElementById('pfError').textContent = `Uploaded "${data.fileName}" into the knowledge base.`;
+      fileInput.value = '';
+      loadKB();
+    } catch (e) {
+      document.getElementById('pfError').style.color = 'var(--red)';
+      document.getElementById('pfError').textContent = e.message;
+    }
+  }
+
+  async function syncProjectNow(id) {
+    try {
+      const res = await fetch(`/api/applications/${id}/sync`, { method: 'POST' });
+      const data = await res.json();
+      await loadProjects();
+      if (data.error) {
+        alert(`Sync finished with an error: ${data.error}`);
+      } else {
+        alert(`Sync complete — ${data.total} item(s) ingested (Confluence: ${data.confluence}, Teams: ${data.teams}, Outlook: ${data.outlook}, Code: ${data.code}).`);
+      }
+      loadKB();
+    } catch (e) {
+      alert('Sync request failed: ' + e.message);
+    }
+  }
+
+  async function deleteProject(id) {
+    if (!confirm('Delete this project? This cannot be undone.')) return;
+    await fetch(`/api/applications/${id}`, { method: 'DELETE' });
+    await loadProjects();
+    loadKB();
+  }
+
+  // ── Chunk modal ──────────────────────────────────────────────
+  function showChunk(title, content) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').textContent = content;
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+
+  function closeModal(e) {
+    if (!e || e.target === document.getElementById('modalOverlay') || e.currentTarget.classList.contains('modal-close')) {
+      document.getElementById('modalOverlay').classList.remove('open');
+    }
+  }
+
+  // ── Utils ────────────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  // ── Init ─────────────────────────────────────────────────────
+  loadProjects().then(loadKB); // projects first, so the remembered project scope can be restored
+  loadErrors();
+  loadLlmSettings();
+</script>
+</body>
+</html>

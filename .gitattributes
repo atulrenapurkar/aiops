@@ -1,0 +1,12 @@
+# Store text files with LF in the repository; Git converts per machine on checkout.
+* text=auto
+
+# Shell scripts must keep LF to run on macOS/Linux
+*.sh text eol=lf
+
+# Binary files
+*.zip binary
+*.png binary
+*.jpg binary
+*.pdf binary
+*.docx binary

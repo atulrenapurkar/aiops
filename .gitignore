@@ -1,0 +1,20 @@
+# ── Secrets — never commit ──────────────────────────────────
+.env
+.env.*
+!.env.example
+config/application.properties
+*.pem
+*.key
+
+# ── Build output ────────────────────────────────────────────
+target/
+*.log
+
+# ── Local tool / IDE settings ───────────────────────────────
+# settings.local.json can contain command history with keys in it
+.claude/settings.local.json
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
